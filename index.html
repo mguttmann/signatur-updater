@@ -1,21 +1,18 @@
 <!DOCTYPE html>
-<html lang="de">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>journaway – Signatur-Adresse aktualisieren</title>
+  <title>journaway – Update Signature Address</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       font-family: 'Roboto', Arial, sans-serif;
-      background: #f5f7fa;
-      color: #333;
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
+      background: #f5f7fa; color: #333;
+      min-height: 100vh; display: flex;
+      flex-direction: column; align-items: center;
       padding: 40px 20px;
     }
     .container { max-width: 800px; width: 100%; }
@@ -90,43 +87,43 @@
 </head>
 <body>
   <div class="container">
-    <h1>journaway Signatur-Updater</h1>
-    <p class="subtitle">Wir sind umgezogen! Bitte aktualisiere deine E-Mail-Signatur mit der neuen Adresse.</p>
+    <h1>journaway Signature Updater</h1>
+    <p class="subtitle">We've moved! Please update your email signature with our new address.</p>
     <div class="info-box">
-      <strong>Was wird geändert?</strong><br>
+      <strong>What will be changed?</strong><br>
       <span class="change-badge change-old">Am alten Handelshafen 1</span>
       &rarr;
       <span class="change-badge change-new">Mühlenstr. 111</span>
-      <br><br>Alles andere in deiner Signatur bleibt unverändert.
+      <br><br>Everything else in your signature remains unchanged.
     </div>
     <div class="card">
-      <label><span class="step-number">1</span> Kopiere deine Signatur aus HubSpot und füge sie hier ein</label>
-      <textarea id="inputSignature" placeholder="Füge hier den HTML-Code deiner Signatur ein..."></textarea>
+      <label><span class="step-number">1</span> Copy your signature from HubSpot and paste it here</label>
+      <textarea id="inputSignature" placeholder="Paste your signature HTML code here..."></textarea>
       <div class="btn-row">
         <button class="btn btn-primary" onclick="convertSignature()">
           <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-          Adresse aktualisieren
+          Update Address
         </button>
       </div>
     </div>
     <div class="status-msg" id="statusMsg"></div>
     <div class="result-area" id="resultArea">
       <div class="card">
-        <label><span class="step-number">2</span> Deine aktualisierte Signatur – kopiere den Code und ersetze ihn in HubSpot</label>
+        <label><span class="step-number">2</span> Your updated signature – copy the code and replace it in HubSpot</label>
         <textarea id="outputSignature" readonly style="background: #f9fafb;"></textarea>
         <div class="btn-row">
           <button class="btn btn-success" onclick="copyToClipboard()">
             <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
-            Code kopieren
+            Copy Code
           </button>
         </div>
-        <label style="margin-top: 24px;"><span class="step-number">3</span> Vorschau deiner neuen Signatur</label>
+        <label style="margin-top: 24px;"><span class="step-number">3</span> Preview of your new signature</label>
         <div class="preview-frame" id="previewFrame"></div>
       </div>
     </div>
   </div>
-  <div class="copied-toast" id="copiedToast">Kopiert!</div>
-  <p class="footer">journaway GmbH &middot; Internes Tool</p>
+  <div class="copied-toast" id="copiedToast">Copied!</div>
+  <p class="footer">journaway GmbH &middot; Internal Tool</p>
   <script>
     const OLD_ADDRESS = 'Am alten Handelshafen 1';
     const NEW_ADDRESS = 'Mühlenstr. 111';
@@ -136,14 +133,14 @@
       const resultArea = document.getElementById('resultArea');
       statusMsg.className = 'status-msg';
       resultArea.classList.remove('visible');
-      if (!input) { statusMsg.className = 'status-msg error'; statusMsg.textContent = 'Bitte füge zuerst deine Signatur ein.'; return; }
-      if (!input.includes(OLD_ADDRESS)) { statusMsg.className = 'status-msg warning'; statusMsg.innerHTML = 'Hinweis: Der Text <strong>"' + OLD_ADDRESS + '"</strong> wurde in deiner Signatur nicht gefunden. Bitte prüfe, ob du den vollständigen HTML-Code eingefügt hast.'; return; }
-      if (input.includes(NEW_ADDRESS)) { statusMsg.className = 'status-msg success'; statusMsg.textContent = 'Deine Signatur enthält bereits die neue Adresse. Keine Änderung nötig!'; return; }
+      if (!input) { statusMsg.className = 'status-msg error'; statusMsg.textContent = 'Please paste your signature first.'; return; }
+      if (!input.includes(OLD_ADDRESS)) { statusMsg.className = 'status-msg warning'; statusMsg.innerHTML = 'Note: The text <strong>"' + OLD_ADDRESS + '"</strong> was not found in your signature. Please check that you pasted the complete HTML code.'; return; }
+      if (input.includes(NEW_ADDRESS)) { statusMsg.className = 'status-msg success'; statusMsg.textContent = 'Your signature already contains the new address. No changes needed!'; return; }
       const output = input.replaceAll(OLD_ADDRESS, NEW_ADDRESS);
       document.getElementById('outputSignature').value = output;
       document.getElementById('previewFrame').innerHTML = output;
       statusMsg.className = 'status-msg success';
-      statusMsg.textContent = 'Adresse erfolgreich aktualisiert! Kopiere den Code unten und ersetze deine Signatur in HubSpot.';
+      statusMsg.textContent = 'Address updated successfully! Copy the code below and replace your signature in HubSpot.';
       resultArea.classList.add('visible');
       resultArea.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }

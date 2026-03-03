@@ -82,6 +82,22 @@
     }
     .copied-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
     .footer { margin-top: 40px; font-size: 12px; color: #aaa; text-align: center; }
+    .toggle-row {
+      display: flex; align-items: center; gap: 10px; margin-top: 14px;
+    }
+    .toggle-label { font-size: 14px; color: #555; cursor: pointer; user-select: none; }
+    .toggle-switch {
+      position: relative; width: 44px; height: 24px;
+      background: #ccc; border-radius: 12px; cursor: pointer;
+      transition: background 0.2s;
+    }
+    .toggle-switch.active { background: #2563eb; }
+    .toggle-switch::after {
+      content: ''; position: absolute; top: 2px; left: 2px;
+      width: 20px; height: 20px; background: #fff;
+      border-radius: 50%; transition: transform 0.2s;
+    }
+    .toggle-switch.active::after { transform: translateX(20px); }
     @media (max-width: 600px) { body { padding: 20px 12px; } .card { padding: 20px; } textarea { min-height: 150px; } }
   </style>
 </head>
@@ -99,6 +115,10 @@
     <div class="card">
       <label><span class="step-number">1</span> Copy your signature from HubSpot and paste it here</label>
       <textarea id="inputSignature" placeholder="Paste your signature HTML code here..."></textarea>
+      <div class="toggle-row">
+        <div class="toggle-switch active" id="beautifyToggle" onclick="toggleBeautify()"></div>
+        <span class="toggle-label" onclick="toggleBeautify()">Also format / beautify the HTML code</span>
+      </div>
       <div class="btn-row">
         <button class="btn btn-primary" onclick="convertSignature()">
           <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
@@ -127,28 +147,121 @@
   <script>
     const OLD_ADDRESS = 'Am alten Handelshafen 1';
     const NEW_ADDRESS = 'Mühlenstr. 111';
+    let beautifyEnabled = true;
+
+    function toggleBeautify() {
+      beautifyEnabled = !beautifyEnabled;
+      document.getElementById('beautifyToggle').classList.toggle('active', beautifyEnabled);
+    }
+
+    // Lightweight HTML beautifier – no dependencies needed
+    function beautifyHTML(html) {
+      // Normalise whitespace between tags
+      let src = html.replace(/>\s+</g, '><').trim();
+
+      const voidTags = new Set([
+        'area','base','br','col','embed','hr','img','input',
+        'link','meta','param','source','track','wbr'
+      ]);
+
+      const result = [];
+      let indent = 0;
+      const tab = '  ';
+      let pos = 0;
+
+      while (pos < src.length) {
+        // Find next tag
+        const tagStart = src.indexOf('<', pos);
+
+        // Text node before the tag
+        if (tagStart > pos) {
+          const text = src.substring(pos, tagStart).trim();
+          if (text) {
+            result.push(tab.repeat(indent) + text);
+          }
+        }
+        if (tagStart === -1) {
+          // Remaining text
+          const text = src.substring(pos).trim();
+          if (text) result.push(tab.repeat(indent) + text);
+          break;
+        }
+
+        const tagEnd = src.indexOf('>', tagStart);
+        if (tagEnd === -1) {
+          result.push(tab.repeat(indent) + src.substring(tagStart));
+          break;
+        }
+
+        const tag = src.substring(tagStart, tagEnd + 1);
+        // Extract tag name
+        const nameMatch = tag.match(/^<\/?([a-zA-Z][a-zA-Z0-9]*)/);
+        const tagName = nameMatch ? nameMatch[1].toLowerCase() : '';
+        const isClosing = tag.startsWith('</');
+        const isSelfClosing = tag.endsWith('/>') || voidTags.has(tagName);
+
+        if (isClosing) {
+          indent = Math.max(0, indent - 1);
+          result.push(tab.repeat(indent) + tag);
+        } else if (isSelfClosing) {
+          result.push(tab.repeat(indent) + tag);
+        } else {
+          result.push(tab.repeat(indent) + tag);
+          indent++;
+        }
+
+        pos = tagEnd + 1;
+      }
+
+      return result.join('\n');
+    }
+
     function convertSignature() {
       const input = document.getElementById('inputSignature').value.trim();
       const statusMsg = document.getElementById('statusMsg');
       const resultArea = document.getElementById('resultArea');
       statusMsg.className = 'status-msg';
       resultArea.classList.remove('visible');
-      if (!input) { statusMsg.className = 'status-msg error'; statusMsg.textContent = 'Please paste your signature first.'; return; }
-      if (!input.includes(OLD_ADDRESS)) { statusMsg.className = 'status-msg warning'; statusMsg.innerHTML = 'Note: The text <strong>"' + OLD_ADDRESS + '"</strong> was not found in your signature. Please check that you pasted the complete HTML code.'; return; }
-      if (input.includes(NEW_ADDRESS)) { statusMsg.className = 'status-msg success'; statusMsg.textContent = 'Your signature already contains the new address. No changes needed!'; return; }
-      const output = input.replaceAll(OLD_ADDRESS, NEW_ADDRESS);
+
+      if (!input) {
+        statusMsg.className = 'status-msg error';
+        statusMsg.textContent = 'Please paste your signature first.';
+        return;
+      }
+      if (!input.includes(OLD_ADDRESS)) {
+        statusMsg.className = 'status-msg warning';
+        statusMsg.innerHTML = 'Note: The text <strong>"' + OLD_ADDRESS + '"</strong> was not found in your signature. Please check that you pasted the complete HTML code.';
+        return;
+      }
+      if (input.includes(NEW_ADDRESS) && !input.includes(OLD_ADDRESS)) {
+        statusMsg.className = 'status-msg success';
+        statusMsg.textContent = 'Your signature already contains the new address. No changes needed!';
+        return;
+      }
+
+      let output = input.replaceAll(OLD_ADDRESS, NEW_ADDRESS);
+
+      if (beautifyEnabled) {
+        output = beautifyHTML(output);
+      }
+
       document.getElementById('outputSignature').value = output;
       document.getElementById('previewFrame').innerHTML = output;
+
+      const extra = beautifyEnabled ? ' The HTML has also been neatly formatted.' : '';
       statusMsg.className = 'status-msg success';
-      statusMsg.textContent = 'Address updated successfully! Copy the code below and replace your signature in HubSpot.';
+      statusMsg.textContent = 'Address updated successfully!' + extra + ' Copy the code below and replace your signature in HubSpot.';
+
       resultArea.classList.add('visible');
       resultArea.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
+
     function copyToClipboard() {
       const output = document.getElementById('outputSignature');
       output.select(); output.setSelectionRange(0, 99999);
       navigator.clipboard.writeText(output.value).then(() => showToast()).catch(() => { document.execCommand('copy'); showToast(); });
     }
+
     function showToast() {
       const toast = document.getElementById('copiedToast');
       toast.classList.add('show'); setTimeout(() => toast.classList.remove('show'), 2000);

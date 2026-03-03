@@ -89,7 +89,7 @@
     .toggle-switch {
       position: relative; width: 44px; height: 24px;
       background: #ccc; border-radius: 12px; cursor: pointer;
-      transition: background 0.2s;
+      transition: background 0.2s; flex-shrink: 0;
     }
     .toggle-switch.active { background: #2563eb; }
     .toggle-switch::after {
@@ -154,65 +154,77 @@
       document.getElementById('beautifyToggle').classList.toggle('active', beautifyEnabled);
     }
 
-    // Lightweight HTML beautifier – no dependencies needed
     function beautifyHTML(html) {
-      // Normalise whitespace between tags
-      let src = html.replace(/>\s+</g, '><').trim();
+      let src = html.trim();
+      const blockTags = new Set(['table','tr','td','th','thead','tbody','tfoot','div','p','ul','ol','li','section','header','footer','nav','main']);
+      const voidTags = new Set(['area','base','br','col','embed','hr','img','input','link','meta','param','source','track','wbr']);
 
-      const voidTags = new Set([
-        'area','base','br','col','embed','hr','img','input',
-        'link','meta','param','source','track','wbr'
-      ]);
-
-      const result = [];
-      let indent = 0;
-      const tab = '  ';
+      // Tokenize
+      const tokens = [];
       let pos = 0;
-
       while (pos < src.length) {
-        // Find next tag
         const tagStart = src.indexOf('<', pos);
-
-        // Text node before the tag
-        if (tagStart > pos) {
-          const text = src.substring(pos, tagStart).trim();
-          if (text) {
-            result.push(tab.repeat(indent) + text);
-          }
-        }
-        if (tagStart === -1) {
-          // Remaining text
-          const text = src.substring(pos).trim();
-          if (text) result.push(tab.repeat(indent) + text);
-          break;
-        }
-
+        if (tagStart > pos) tokens.push({ type: 'text', value: src.substring(pos, tagStart) });
+        if (tagStart === -1) { if (pos < src.length) tokens.push({ type: 'text', value: src.substring(pos) }); break; }
         const tagEnd = src.indexOf('>', tagStart);
-        if (tagEnd === -1) {
-          result.push(tab.repeat(indent) + src.substring(tagStart));
-          break;
-        }
-
+        if (tagEnd === -1) { tokens.push({ type: 'text', value: src.substring(tagStart) }); break; }
         const tag = src.substring(tagStart, tagEnd + 1);
-        // Extract tag name
         const nameMatch = tag.match(/^<\/?([a-zA-Z][a-zA-Z0-9]*)/);
         const tagName = nameMatch ? nameMatch[1].toLowerCase() : '';
         const isClosing = tag.startsWith('</');
         const isSelfClosing = tag.endsWith('/>') || voidTags.has(tagName);
-
-        if (isClosing) {
-          indent = Math.max(0, indent - 1);
-          result.push(tab.repeat(indent) + tag);
-        } else if (isSelfClosing) {
-          result.push(tab.repeat(indent) + tag);
-        } else {
-          result.push(tab.repeat(indent) + tag);
-          indent++;
-        }
-
+        const isBlock = blockTags.has(tagName);
+        tokens.push({ type: 'tag', value: tag, tagName, isClosing, isSelfClosing, isBlock });
         pos = tagEnd + 1;
       }
 
+      // Check if block element contains only inline children
+      function isLeafBlock(startIdx) {
+        const openTag = tokens[startIdx];
+        let depth = 1;
+        for (let j = startIdx + 1; j < tokens.length; j++) {
+          const t = tokens[j];
+          if (t.type !== 'tag' || !t.isBlock) continue;
+          if (!t.isClosing && !t.isSelfClosing && t.tagName === openTag.tagName) { depth++; }
+          else if (t.isClosing && t.tagName === openTag.tagName) { depth--; if (depth === 0) return { isLeaf: true, endIdx: j }; }
+          else { return { isLeaf: false }; }
+        }
+        return { isLeaf: false };
+      }
+
+      const result = [];
+      let indent = 0;
+      const tab = '  ';
+      let currentLine = '';
+      let i = 0;
+
+      while (i < tokens.length) {
+        const token = tokens[i];
+        if (token.type === 'text') { currentLine += token.value; i++; continue; }
+        if (token.isBlock && !token.isClosing && !token.isSelfClosing) {
+          if (currentLine.trim()) { result.push(tab.repeat(indent) + currentLine.trim()); currentLine = ''; }
+          const check = isLeafBlock(i);
+          if (check.isLeaf) {
+            let line = '';
+            for (let k = i; k <= check.endIdx; k++) line += tokens[k].value;
+            result.push(tab.repeat(indent) + line);
+            i = check.endIdx + 1;
+          } else {
+            result.push(tab.repeat(indent) + token.value);
+            indent++;
+            i++;
+          }
+        } else if (token.isBlock && token.isClosing) {
+          if (currentLine.trim()) { result.push(tab.repeat(indent) + currentLine.trim()); currentLine = ''; }
+          indent = Math.max(0, indent - 1);
+          result.push(tab.repeat(indent) + token.value);
+          i++;
+        } else {
+          currentLine += token.value;
+          i++;
+        }
+      }
+      if (currentLine.trim()) result.push(tab.repeat(indent) + currentLine.trim());
       return result.join('\n');
     }
 
@@ -240,10 +252,7 @@
       }
 
       let output = input.replaceAll(OLD_ADDRESS, NEW_ADDRESS);
-
-      if (beautifyEnabled) {
-        output = beautifyHTML(output);
-      }
+      if (beautifyEnabled) output = beautifyHTML(output);
 
       document.getElementById('outputSignature').value = output;
       document.getElementById('previewFrame').innerHTML = output;
